@@ -1,0 +1,195 @@
+
+    :root {
+      --bg: #0f172a;        /* slate-900 */
+      --panel: #111827;     /* gray-900 */
+      --grid: #1f2937;      /* gray-800 */
+      --accent: #22d3ee;    /* cyan-400 */
+      --accent-2: #a78bfa;  /* violet-400 */
+      --coin: #fbbf24;      /* amber-400 */
+      --danger: #ef4444;    /* red-500 */
+      --text: #e5e7eb;      /* gray-200 */
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: radial-gradient(1200px 800px at 70% -10%, #1f2937 0%, var(--bg) 60%);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
+      display: grid;
+      place-items: center;
+      overflow: hidden; /* stop page scroll during gameplay */
+    }
+
+    .hud {
+      position: fixed;
+      top: 12px; left: 12px; right: 12px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(180deg, rgba(17,24,39,0.9), rgba(17,24,39,0.7));
+      border: 1px solid #283042;
+      border-radius: 14px;
+      backdrop-filter: blur(6px);
+      padding: 10px 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+    .hud .stats { display: flex; gap: 16px; }
+    .pill {
+      padding: 6px 10px; border-radius: 999px; border: 1px solid #2b3547; background:#0b1220;
+      font-size: 14px; letter-spacing: 0.2px;
+    }
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+
+    .game-wrap {
+      width: min(92vw, 900px);
+      height: min(calc(92vh - 70px), 600px);
+      border-radius: 18px;
+      border: 1px solid #2a3245;
+      background: linear-gradient(180deg, rgb(6, 54, 6)), repeating-linear-gradient(0deg, transparent 0 22px, rgba(255,255,255,0.03) 22px 23px);
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.35);
+    }
+
+    /* Optional subtle grid */
+    .game-wrap::before {
+      content: "";
+      position: absolute; inset: 0;
+      background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: 32px 32px, 32px 32px;
+      opacity: 0.22;
+      pointer-events: none;
+    }
+
+    #game { position: absolute; inset: 0; }
+
+
+    /* Idle breathing animation (applies only when .idle is on the player) */
+.player.idle {
+  animation: breathe 1.2s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+#player { position:absolute; width:32px; height:32px; }
+#player img { width:100%; height:100%; image-rendering:pixelated; image-rendering:crisp-edges; }
+#player.flip-x img { transform: scaleX(-1); transform-origin:center; }
+
+/* NPC idle breathing */
+.npc {
+  transform-origin: center bottom;
+  will-change: transform;
+}
+.npc.idle {
+  animation: npc-breathe 1.3s ease-in-out infinite;
+}
+
+@keyframes npc-breathe {
+  0%   { transform: translateY(0) scale(1); }
+  50%  { transform: translateY(-1px) scale(1.02); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+
+
+@keyframes breathe {
+  0%   { transform: translateY(0) scale(1); }
+  50%  { transform: translateY(-1px) scale(1.03); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+.npc { filter: drop-shadow(0 6px 10px rgba(0,0,0,0.35)); }
+
+
+
+    .coin {
+      width: 16px; height: 16px; border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #fff7 8%, var(--coin) 35%, #b45309 100%);
+      border: 1px solid #7c2d12;
+      position: absolute;
+      box-shadow: 0 6px 16px rgba(251,191,36,0.35);
+      animation: bob 0.8s ease-in-out infinite alternate;
+    }
+    @keyframes bob { from { transform: translateY(0);} to { transform: translateY(-3px);} }
+
+    .obstacle {
+      position: absolute; background: #1f2937; border: 1px solid #334155; border-radius: 10px;
+      box-shadow: inset 0 0 0 2px rgba(0,0,0,0.15);
+    }
+
+    .toast { position: absolute; bottom: 8px; right: 12px; font-size: 12px; opacity: 0.7; }
+  
+
+    .tree {
+  position: absolute;
+  image-rendering: pixelated;
+  pointer-events: none;          /* just scenery */
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,.35));
+}
+
+/* small invisible collider for the trunk */
+.tree .trunk {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 18px;                   /* tweak for feel */
+  height: 12px;
+  bottom: 6px;                   /* sits at base */
+  background: transparent;
+}
+
+.gate {
+  position: absolute;
+  image-rendering: pixelated;
+  /* Wood base */
+  background:
+    /* vertical planks */
+    repeating-linear-gradient(
+      90deg,
+      #7a4f2a 0px, #7a4f2a 7px,
+      #6d4525 7px, #6d4525 14px
+    );
+  border: 2px solid #3b2615;
+  box-shadow: 0 6px 10px rgba(0,0,0,0.25);
+  /* subtle wood grain */
+  background-blend-mode: multiply;
+  overflow: visible;
+}
+
+/* Cross braces */
+.gate::before,
+.gate::after {
+  content: "";
+  position: absolute;
+  left: 2px; right: 2px;
+  height: 8px;
+  background: #5a3a20;
+  border: 1px solid #3b2615;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.15);
+}
+.gate::before { top: 22%; }
+.gate::after  { bottom: 22%; }
+
+/* Hinges + bolts (left side) */
+.gate .hinges {
+  position: absolute;
+  left: -6px; top: 8px; bottom: 8px; width: 6px;
+  background:
+    radial-gradient(circle at 50% 15%, #c7c7c7 0 2px, transparent 3px),
+    radial-gradient(circle at 50% 50%, #c7c7c7 0 2px, transparent 3px),
+    radial-gradient(circle at 50% 85%, #c7c7c7 0 2px, transparent 3px);
+  filter: drop-shadow(0 0 1px rgba(0,0,0,.5));
+}
+
+/* Optional “locked bar” look — add class .locked to show */
+.gate.locked::before,
+.gate.locked::after { background: #4b2f18; }
+
+/* Opening animation */
+.gate.opening {
+  transition: transform 320ms ease-out, opacity 320ms ease-out;
+  transform: translateX(10px) scaleY(0.98);
+  opacity: 0;
+}
