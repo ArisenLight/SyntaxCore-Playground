@@ -9,6 +9,14 @@ import { plantTreesAt, placeTentAt } from './props.js';
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 const rectsOverlap = (a, b) => !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom);
 
+function isNearRect(aRect, bRect, pad = 36) {
+  // distance between two axis-aligned rectangles (0 when overlapping)
+  const dx = Math.max(0, Math.max(bRect.left - aRect.right, aRect.left - bRect.right));
+  const dy = Math.max(0, Math.max(bRect.top - aRect.bottom, aRect.top - bRect.bottom));
+  return Math.max(dx, dy) <= pad;
+}
+
+
 function fadeTransition(doWork) {
   return new Promise(async (resolve) => {
     const overlay = document.createElement('div');
@@ -324,6 +332,16 @@ t2.textContent = 'New lesson: pick items with E. Press I to open inventory.';
 document.querySelector('.game-wrap')?.appendChild(t2);
 setTimeout(() => t2.remove(), 3000);
 
+document.getElementById('northGate')?.remove();
+const northGate = document.createElement('div');
+northGate.id = 'northGate';
+northGate.className = 'obstacle gate';
+northGate.style.right = '14px'; // adjust to your map
+northGate.style.top  = '120px';
+northGate.style.width = '22px';
+northGate.style.height = '300px';
+gameEl.appendChild(northGate);
+state.obstacles.push(northGate);
 
 
     // (Optional) drop a tent/landmark in Area 2
@@ -386,7 +404,7 @@ function openEastGate() {
   // stop blocking immediately (optional): remove from obstacles first
   state.obstacles = state.obstacles.filter(el => el !== gate);
 
-  gate.classList.add('opening');
+  
   setTimeout(() => {
     gate.remove();
     // ✅ keep the tent in Area 1 (no clearTents here)
@@ -398,6 +416,87 @@ function openEastGate() {
   }, 320);
   
 }
+
+function openNorthGate() {
+  const gate = document.getElementById('northGate');
+  if (!gate || gate.classList.contains('opening')) return;
+  gate.classList.add('opening');
+
+ // consume one "key" if present
+ const slot = state.inventory.find(i => i.id === 'key');
+ if (slot) {
+   slot.qty -= 1;
+   if (slot.qty <= 0) {
+     state.inventory = state.inventory.filter(i => i !== slot);
+   }
+   renderInventory(state.inventory);
+ }
+
+  // Remove from obstacles so player can pass
+  state.obstacles = state.obstacles.filter(el => el !== gate);
+  setTimeout(() => gate.remove(), 300);
+
+ // feedback
+ const t = document.createElement('div');
+ t.className = 'toast';
+ t.textContent = 'Used Old Key. The northern gate unlocks.';
+ document.querySelector('.game-wrap')?.appendChild(t);
+ setTimeout(() => t.remove(), 1500);
+}
+
+async function goToArea3() {
+  await fadeTransition(async () => {
+    // clear dynamic world
+    document.querySelectorAll('.tree, .tent, .tent-hitbox, .coin, .npc, .item, .gate').forEach(el => el.remove());
+    state.coinNodes.clear();
+
+    // reset obstacles to static ones
+    state.obstacles = Array.from(document.querySelectorAll('.obstacle'));
+    state.obstacles = state.obstacles.filter(el => document.body.contains(el));
+
+    // backdrop for area 3
+    gameEl.classList.remove('area-east');
+    gameEl.classList.add('area-north');
+
+    // border trees for Area 3 (example)
+    const bounds = gameEl.getBoundingClientRect();
+    const STEP = 60;
+    const makeRow = (y) => {
+      const pts = [];
+      for (let x = 15; x < bounds.width - 20; x += STEP) pts.push({ x, y });
+      return pts;
+    };
+    const TOP = 56, BOTTOM = bounds.height - 2;
+    const cTop = await plantTreesAt(gameEl, makeRow(TOP));
+    const cBot = await plantTreesAt(gameEl, makeRow(BOTTOM));
+    state.obstacles.push(...cTop, ...cBot);
+
+    // spawn scout in Area 3 (optional)
+    const scoutEls = mountNPCs(gameEl, n => n.id === 'scout');
+    state.obstacles.push(...scoutEls);
+    const scoutEl = document.querySelector('[aria-label="scout"]');
+    if (scoutEl) {
+      scoutEl.style.left = '120px';
+      scoutEl.style.top  = (bounds.height - 120) + 'px';
+    }
+
+    // player enters from bottom
+    state.pos.x = Math.min(Math.max(state.pos.x, 40), bounds.width - 60);
+    state.pos.y = bounds.height - playerEl.getBoundingClientRect().height - 2;
+    playerEl.style.left = state.pos.x + 'px';
+    playerEl.style.top  = state.pos.y + 'px';
+  });
+
+  state.currentArea = 3;
+
+  // tip (optional)
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = 'Area 3: (WIP) Explore north!';
+  document.querySelector('.game-wrap')?.appendChild(t);
+  setTimeout(() => t.remove(), 2000);
+}
+
 
 
 
@@ -456,6 +555,29 @@ if (action === 'interact') {
     state.keys.delete(action);
     return; // stop here; don't open NPC dialogue on same press
   }
+
+// 2.5) Check for gate opening by key (Area 2 right-side gate)
+const northGateEl = document.getElementById('northGate');
+if (state.currentArea === 2 && northGateEl) {
+  const pr = playerEl.getBoundingClientRect();
+  const gr = gameEl.getBoundingClientRect(); // not used here but kept for symmetry
+  const grt = northGateEl.getBoundingClientRect();
+
+  if (isNearRect(pr, grt, 36)) {  // generous radius so the collider doesn't block the action
+    const slot = state.inventory.find(i => i.id === 'key');
+    if (slot) {
+      openNorthGate();
+    } else {
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.textContent = "The gate is locked. You need a key.";
+      document.querySelector('.game-wrap')?.appendChild(t);
+      setTimeout(() => t.remove(), 1500);
+    }
+    return; // consume the E press
+  }
+}
+
 
   // 3) Otherwise talk to NPC if near
   const npc = findNearbyNPC(playerEl, 10);
@@ -605,7 +727,7 @@ if (isDialogueOpen()) {
   const gateGone = !document.getElementById('eastGate');          // already opened/removed
   const nearRight = state.pos.x + size.width >= bounds.width - 2; // hugging the right edge
 
-  if (state.flags.homelessQuestDone && gateGone && nearRight && !state._loadingArea) {
+  if (state.currentArea === 1 && state.flags.homelessQuestDone && gateGone && nearRight && !state._loadingArea) {
     state._loadingArea = true;              // guard so we don’t double-trigger
     goToEastArea().finally(() => { state._loadingArea = false; });
   }
@@ -617,6 +739,24 @@ if (isDialogueOpen()) {
   // Prefer item hint if item is closer; otherwise NPC hint
   const itemEl = findNearbyItem(playerEl, 14);
   const npc = itemEl ? null : findNearbyNPC(playerEl, 10);
+
+// Gate hint (Area 2)
+const gateEl = state.currentArea === 2 ? document.getElementById('northGate') : null;
+if (!itemEl && gateEl) {
+  const pr = playerEl.getBoundingClientRect();
+  const gr = gameEl.getBoundingClientRect();
+  const r  = gateEl.getBoundingClientRect();
+
+  if (isNearRect(pr, r, 36)) {
+    const hasKey = state.inventory.some(i => i.id === 'key');
+    talkHint.textContent = hasKey ? 'E (unlock)' : 'Locked';
+    talkHint.style.left = (r.left - gr.left + r.width/2) + 'px';
+    talkHint.style.top  = (r.top  - gr.top) + 'px';
+    talkHint.style.display = 'block';
+    return;
+  }
+}
+
 
   if (itemEl) {
     const r = itemEl.getBoundingClientRect();
@@ -639,6 +779,14 @@ if (isDialogueOpen()) {
     talkHint.style.display = 'none';
   }
 }
+
+// Transition to Area 3
+ const nearRight2 = state.pos.x + playerEl.getBoundingClientRect().width >= gameEl.getBoundingClientRect().width - 2;
+ if (state.currentArea === 2 && !document.getElementById('northGate') && nearRight2 && !state._loadingArea) {
+  state._loadingArea = true;
+  goToArea3().finally(() => state._loadingArea = false);
+}
+
 
 
 }

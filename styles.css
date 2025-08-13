@@ -10,14 +10,24 @@
       --text: #e5e7eb;      /* gray-200 */
     }
 
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
+    * { 
+      box-sizing: border-box;
+    }
+
+    html, body { 
+      height: 100%;
+      margin: 0%;
+    }
+
+
     body {
       margin: 0;
       background: radial-gradient(1200px 800px at 70% -10%, #1f2937 0%, var(--bg) 60%);
       color: var(--text);
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
-      display: grid;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       place-items: center;
       overflow: hidden; /* stop page scroll during gameplay */
     }
@@ -50,6 +60,7 @@
       border: 1px solid #2a3245;
       background: linear-gradient(180deg, rgb(6, 54, 6)), repeating-linear-gradient(0deg, transparent 0 22px, rgba(255,255,255,0.03) 22px 23px);
       position: relative;
+      inset: 0;
       overflow: hidden;
       box-shadow: 0 25px 60px rgba(0,0,0,0.35);
     }
@@ -64,8 +75,15 @@
       pointer-events: none;
     }
 
-    #game { position: absolute; inset: 0; }
+    #game {
+  position: relative;        /* << key fix */
+  width: 100%;
+  height: 100%;
+}
 
+.tree, .npc, .item, .coin, .gate, #player {
+  position: absolute;
+}
 
     /* Idle breathing animation (applies only when .idle is on the player) */
 .player.idle {
@@ -260,4 +278,9 @@
   box-shadow: 0 2px 6px rgba(0,0,0,.25);
   white-space: nowrap;
   pointer-events: none;
+}
+
+.creator a {
+  color: inherit;
+  text-decoration: none;
 }
