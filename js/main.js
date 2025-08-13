@@ -76,6 +76,18 @@ for (const it of items) {
   state.itemNodes.add(n);
 }
 
+ // --- Spawn the Scout in Area 2 ---
+ const scoutEls = mountNPCs(gameEl, n => n.id === 'scout');
+ state.obstacles.push(...scoutEls);
+
+ // Optionally adjust the scout’s position for Area 2 without changing the data:
+ const scoutEl = document.querySelector('[aria-label="scout"]');
+ if (scoutEl) {
+   // Place him near the west edge so the player sees him quickly.
+   // Tweak to taste:
+   scoutEl.style.left = '120px';
+   scoutEl.style.top  = '120px';
+ }
 }
 
 
@@ -102,7 +114,8 @@ const state = {
   frameTimer: 0,
   frameDelay: 0.15,
   lastTime: performance.now(),
-  flags: { homelessQuestDone: false },
+  flags: { homelessQuestDone: false, scoutHintShown: false },
+  currentArea: 1,
   inventory: [],          // array of { id, name, icon, qty }
   itemNodes: new Set(),   // DOM nodes for world items
 };
@@ -118,7 +131,7 @@ gameEl.appendChild(talkHint);
 // Obstacles present in HTML
 state.obstacles = Array.from(document.querySelectorAll('.obstacle'));
 // Mount NPCs into the world and also treat them as obstacles
-const npcEls = mountNPCs(gameEl);
+const npcEls = mountNPCs(gameEl, n => n.id === 'homeless' || n.id === 'scout');
 state.obstacles.push(...npcEls);
 
 // Decorate the east gate with hinges once
@@ -159,7 +172,7 @@ plantTreesAt(gameEl, [
   { x: 545, y: 20 }
 ]).then(colliders => {
   state.obstacles.push(...colliders);
-  extendTrees();
+  state._needExtendTrees = true;
 });
 
 // --- Helpers for extension ---
@@ -327,6 +340,9 @@ setTimeout(() => t2.remove(), 3000);
     playerEl.style.left = state.pos.x + 'px';
     playerEl.style.top  = state.pos.y + 'px';
   });
+
+  state.currentArea = 2;
+
 }
 
 
@@ -380,6 +396,7 @@ function openEastGate() {
     document.querySelector('.game-wrap')?.appendChild(t);
     setTimeout(() => t.remove(), 7000);
   }, 320);
+  
 }
 
 
@@ -443,7 +460,7 @@ if (action === 'interact') {
   // 3) Otherwise talk to NPC if near
   const npc = findNearbyNPC(playerEl, 10);
   if (npc) {
-    const dlg = getDialogueFor(npc, { coins: state.coins, flags: state.flags });
+    const dlg = getDialogueFor(npc, { coins: state.coins, flags: state.flags, area: state.currentArea });
 
     // face the NPC
     const pr = playerEl.getBoundingClientRect();
@@ -701,5 +718,12 @@ renderInventory(state.inventory);
   // position player initially
   playerEl.style.left = state.pos.x + 'px';
   playerEl.style.top  = state.pos.y + 'px';
+  requestAnimationFrame(() => {
+    if (state._needExtendTrees) {
+      extendTrees();
+      state._needExtendTrees = false;
+    }
+  });
   requestAnimationFrame(loop);
 })();
+

@@ -81,7 +81,9 @@
 .npc {
   transform-origin: center bottom;
   will-change: transform;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,0.35));
 }
+
 .npc.idle {
   animation: npc-breathe 1.3s ease-in-out infinite;
 }
@@ -100,11 +102,7 @@
   100% { transform: translateY(0) scale(1); }
 }
 
-.npc { filter: drop-shadow(0 6px 10px rgba(0,0,0,0.35)); }
-
-
-
-    .coin {
+.coin {
       width: 16px; height: 16px; border-radius: 50%;
       background: radial-gradient(circle at 30% 30%, #fff7 8%, var(--coin) 35%, #b45309 100%);
       border: 1px solid #7c2d12;
@@ -248,3 +246,18 @@
   border-radius:8px; cursor:pointer;
 }
 .inv-row button:hover { background:#0b1220; }
+
+.speech-bubble {
+  position: absolute;
+  bottom: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  background: #fff;
+  color: #111;
+  border-radius: 6px;
+  font: 14px/1.2 system-ui, sans-serif;
+  box-shadow: 0 2px 6px rgba(0,0,0,.25);
+  white-space: nowrap;
+  pointer-events: none;
+}

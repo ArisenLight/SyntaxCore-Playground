@@ -140,9 +140,10 @@ async function buildNpcFrameURL(npc) {
 }
 
 // --- mount & proximity -----------------------------------------------------
-export function mountNPCs(gameEl) {
+  export function mountNPCs(gameEl, predicate = () => true) {
   const out = [];
-  for (const npc of npcs) {
+  for (const npc of npcs.filter(predicate)) {
+
     const el = document.createElement('div');
     el.className = 'npc';
     el.style.cssText = `
@@ -196,8 +197,8 @@ export function findNearbyNPC(playerEl, margin = 16) {
   let bestScore = Infinity;
 
   for (const npc of npcs) {
-    const el = els.get(npc.id);
-    if (!el) continue;
+  const el = els.get(npc.id);
+  if (!el || !el.isConnected) continue;
 
     const nr = rect(el);
     const g = edgeGap(pr, nr);
@@ -251,9 +252,22 @@ export function getDialogueFor(npc, game) {
     };
   }
 
-  if (npc.id === 'scout') {
+if (npc.id === 'scout') {
+  if (game.area === 2) {
+    // --- Second area dialogue ---
     return {
-      lines: flags.homelessQuestDone
+      lines: [
+        "Scout: Welcome to the eastern woods.",
+        "You'll find rare items out here... but be ever wary of the danger that lurks.",
+        "Press 'E' to pick up items when you are close by.",
+        "Press 'I' to look at you items in your inventory.",
+        "Safe travels, adventurer!"
+      ]
+    };
+  } else {
+    // --- First area dialogue ---
+    return {
+      lines: game.flags.homelessQuestDone
         ? [
             "Scout: Opened the gate already? Not bad.",
             "Be wary, traveler. Many dangers lurk past these walls."
@@ -264,6 +278,8 @@ export function getDialogueFor(npc, game) {
           ]
     };
   }
+}
+
 
   return { lines: ["..."] };
 }
