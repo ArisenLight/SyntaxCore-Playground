@@ -126,6 +126,7 @@ const state = {
   currentArea: 1,
   inventory: [],          // array of { id, name, icon, qty }
   itemNodes: new Set(),   // DOM nodes for world items
+  dead: false,
 };
 
 const talkHint = document.createElement('div');
@@ -495,6 +496,12 @@ async function goToArea3() {
   t.textContent = 'Area 3: (WIP) Explore north!';
   document.querySelector('.game-wrap')?.appendChild(t);
   setTimeout(() => t.remove(), 2000);
+
+  state.currentArea = 3;
+
+// tiny beat then insta-trap
+setTimeout(triggerChasmDeath, 350);
+
 }
 
 
@@ -513,6 +520,14 @@ const keyMap = {
 };
 
 window.addEventListener('keydown', (e) => {
+    if (state.dead) {
+    // Allow quick restart with "R"
+    if (e.code === 'KeyR') {
+      location.reload();
+    }
+    e.preventDefault();
+    return;
+  }
   const code = e.code in keyMap ? e.code : e.key;
   if (keyMap[code]) {
     e.preventDefault();
@@ -625,6 +640,8 @@ if (action === 'inventory') {
 
 // --- Step ---
 function step(dt) {
+  if (state.dead) return;
+
     // If dialogue is open, freeze movement (but idle breathing stays)
 if (isDialogueOpen()) {
   // zero movement, keep facing from previous frame
@@ -875,3 +892,42 @@ renderInventory(state.inventory);
   requestAnimationFrame(loop);
 })();
 
+function triggerChasmDeath() {
+  if (state.dead) return;
+  state.dead = true;
+
+  // 1) Darken area (chasm look)
+  const chasm = document.createElement('div');
+  chasm.className = 'chasm-overlay';
+  gameEl.appendChild(chasm);
+  requestAnimationFrame(() => { chasm.style.opacity = '1'; });
+
+  // 2) Fall animation for the player
+  playerEl.style.willChange = 'transform, opacity';
+  playerEl.style.transition = 'transform 650ms ease-in, opacity 650ms ease-in';
+  // kick the animation
+  requestAnimationFrame(() => {
+    playerEl.style.transform = 'translateY(40px) scale(0.1)';
+    playerEl.style.opacity = '0';
+  });
+
+  // 3) After the "fall", show Game Over
+  setTimeout(() => {
+    const panel = document.createElement('div');
+    panel.className = 'gameover-panel';
+    panel.innerHTML = `
+      <div class="gameover-card">
+        <h2>Game Over</h2>
+        <p>You fell into the chasm.</p>
+        <button id="btnRestart">Restart</button>
+        <div style="margin-top:6px; font-size:12px; opacity:.7">Press <b>R</b> to restart</div>
+      </div>
+    `;
+    document.querySelector('.game-wrap').appendChild(panel);
+    requestAnimationFrame(() => { panel.style.opacity = '1'; });
+
+    panel.querySelector('#btnRestart')?.addEventListener('click', () => {
+      location.reload();
+    });
+  }, 720);
+}
