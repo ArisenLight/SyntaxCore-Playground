@@ -1,6 +1,6 @@
 // js/main.js
 import { DIR, FRAME_W, FRAME_H, ASSETS, loadSprites } from './sprites.js';
-import { initUI, isDialogueOpen, showDialogue, advanceDialogue } from './ui.js';
+import { initUI, isDialogueOpen, showDialogue, advanceDialogue, initInventoryUI, toggleInventory, renderInventory } from './ui.js';
 import { npcs, mountNPCs, findNearbyNPC, getDialogueFor } from './npc.js';
 import { plantTreesAt, placeTentAt } from './props.js';
 
@@ -30,6 +30,55 @@ function clearTents() {
   state.obstacles = state.obstacles.filter(o => !o.classList.contains('tent-hitbox'));
 }
 
+function findNearbyItem(playerEl, margin = 14) {
+  const pr = playerEl.getBoundingClientRect();
+  for (const el of state.itemNodes) {
+    const r = el.getBoundingClientRect();
+    const gapX = Math.max(0, Math.max(r.left - pr.right, pr.left - r.right));
+    const gapY = Math.max(0, Math.max(r.top - pr.bottom, pr.top - r.bottom));
+    if (Math.max(gapX, gapY) <= margin) return el;
+  }
+  return null;
+}
+
+function addToInventory({ id, name, icon }) {
+  const slot = state.inventory.find(i => i.id === id);
+  if (slot) { slot.qty += 1; }
+  else state.inventory.push({ id, name, icon, qty: 1 });
+  renderInventory(state.inventory);
+}
+
+function spawnItemsArea2() {
+  // simple items; y is ground-point like trees/ tent base
+  const items = [
+    { id:'key',    name:'Old Key',   icon:'🗝️', x: 380, y: 260 },
+    { id:'apple',  name:'Apple',     icon:'🍎', x: 320, y: 120 },
+  ];
+for (const it of items) {
+  const n = document.createElement('div');
+  n.className = 'item';
+
+  // anchor by base-center (18×18 box)
+  const left = Math.round(it.x - 9);
+  const top  = Math.round(it.y - 18);
+  n.style.left = left + 'px';
+  n.style.top  = top + 'px';
+
+  // ✅ show the emoji icon in-world
+  n.textContent = it.icon;
+  n.title = it.name; // hover tooltip
+
+  n.dataset.itemId = it.id;
+  n.dataset.itemName = it.name;
+  n.dataset.itemIcon = it.icon;
+
+  gameEl.appendChild(n);
+  state.itemNodes.add(n);
+}
+
+}
+
+
 
 // --- DOM ---
 const gameEl = document.getElementById('game');
@@ -54,6 +103,8 @@ const state = {
   frameDelay: 0.15,
   lastTime: performance.now(),
   flags: { homelessQuestDone: false },
+  inventory: [],          // array of { id, name, icon, qty }
+  itemNodes: new Set(),   // DOM nodes for world items
 };
 
 const talkHint = document.createElement('div');
@@ -220,31 +271,47 @@ async function extendTrees() {
 async function goToEastArea() {
   await fadeTransition(async () => {
     // 1) Clear dynamic world (trees, tent, coins, NPC elements)
-    document.querySelectorAll('.tree, .tent, .coin, .npc').forEach(el => el.remove());
+    document.querySelectorAll('.tree, .tent, .tent-hitbox, .coin, .npc, .item').forEach(el => el.remove());
     state.coinNodes.clear();
 
     // 2) Reset obstacles to any remaining static ones (e.g., walls still in HTML)
     state.obstacles = Array.from(document.querySelectorAll('.obstacle'));
 
+    state.obstacles = state.obstacles.filter(el => document.body.contains(el));
+
+
     // 3) (Optional) change backdrop via a CSS class
     //    Add CSS like: .area-east { background:#3a5f3a; } etc
     gameEl.classList.add('area-east');
 
-    // 4) Build new border trees for the east area
-    const bounds = gameEl.getBoundingClientRect();
-    const STEP = 60;
-    const makeRow = (y) => {
-      const pts = [];
-      for (let x = 15; x < bounds.width - 20; x += STEP) pts.push({ x, y });
-      return pts;
-    };
+// 4) Build new border trees for the east area
+const bounds = gameEl.getBoundingClientRect();
+const STEP = 60;
+const makeRow = (y) => {
+  const pts = [];
+  for (let x = 15; x < bounds.width - 20; x += STEP) pts.push({ x, y });
+  return pts;
+};
 
-    const topRow = makeRow(20);
-    const bottomRow = makeRow(Math.max(40, Math.floor(bounds.height - 60)));
+// Put the top row near the ceiling, and the bottom row right at the ground
+const TOP_MARGIN = 6;          // a little breathing room from the top edge
+const GROUND_MARGIN = 2;       // how close the trunks sit to the bottom
 
-    const c1 = await plantTreesAt(gameEl, topRow);
-    const c2 = await plantTreesAt(gameEl, bottomRow);
-    state.obstacles.push(...c1, ...c2);
+const topRow    = makeRow(TOP_MARGIN + 60);        // or tweak to taste
+const bottomRow = makeRow(bounds.height - GROUND_MARGIN);
+
+const c1 = await plantTreesAt(gameEl, topRow);
+const c2 = await plantTreesAt(gameEl, bottomRow);
+state.obstacles.push(...c1, ...c2);
+
+spawnItemsArea2();
+const t2 = document.createElement('div');
+t2.className = 'toast';
+t2.textContent = 'New lesson: pick items with E. Press I to open inventory.';
+document.querySelector('.game-wrap')?.appendChild(t2);
+setTimeout(() => t2.remove(), 3000);
+
+
 
     // (Optional) drop a tent/landmark in Area 2
     // const tCols = await placeTentAt(gameEl, [{ x: 220, y: 210 }], { tolerance: 14 });
@@ -303,18 +370,18 @@ function openEastGate() {
   // stop blocking immediately (optional): remove from obstacles first
   state.obstacles = state.obstacles.filter(el => el !== gate);
 
-  // play open anim then remove
   gate.classList.add('opening');
   setTimeout(() => {
     gate.remove();
-      clearTents();
+    // ✅ keep the tent in Area 1 (no clearTents here)
     const t = document.createElement('div');
     t.className = 'toast';
     t.textContent = 'You hear a heavy bolt slide open to the east...';
     document.querySelector('.game-wrap')?.appendChild(t);
-    setTimeout(() => t.remove(), 2500);
+    setTimeout(() => t.remove(), 7000);
   }, 320);
 }
+
 
 
 
@@ -326,6 +393,7 @@ const keyMap = {
   'ArrowRight': 'right','KeyD': 'right',
   'ShiftLeft': 'shift', 'ShiftRight': 'shift',
   'KeyE': 'interact',
+  'KeyI': 'inventory',
 };
 
 window.addEventListener('keydown', (e) => {
@@ -341,39 +409,76 @@ window.addEventListener('keyup', (e) => {
   const action = keyMap[code];
   if (!action) return;
 
-  if (action === 'interact') {
-    if (isDialogueOpen()) {
-      advanceDialogue();
-    } else {
-      const npc = findNearbyNPC(playerEl, 10);
-      if (npc) {
-        const dlg = getDialogueFor(npc, { coins: state.coins, flags: state.flags });
+  if (state.keys.has(action)) state.keys.delete(action);
 
-// replace your "face the NPC" block with this
-const pr = playerEl.getBoundingClientRect();
-const npcEl = document.querySelector(`[aria-label="${npc.id}"]`);
-const nr = npcEl?.getBoundingClientRect();
-if (nr) {
-  const dx = (nr.left + nr.width/2) - (pr.left + pr.width/2);
-  const dy = (nr.top + nr.height/2) - (pr.top + pr.height/2);
-  if (Math.abs(dx) > Math.abs(dy)) {
-    state.dir = dx > 0 ? DIR.RIGHT : DIR.LEFT;
-  } else {
-    state.dir = dy > 0 ? DIR.DOWN : DIR.UP;
+if (action === 'interact') {
+  // 1) If dialogue is open, advance it
+  if (isDialogueOpen()) {
+    advanceDialogue();
+    state.keys.delete(action);
+    return;
   }
+
+  // 2) Try picking up an item first
+  const nearItem = findNearbyItem(playerEl, 14);
+  if (nearItem) {
+    addToInventory({
+      id: nearItem.dataset.itemId,
+      name: nearItem.dataset.itemName,
+      icon: nearItem.dataset.itemIcon,
+    });
+    nearItem.remove();
+    state.itemNodes.delete(nearItem);
+
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = `Picked up ${nearItem.dataset.itemName}`;
+    document.querySelector('.game-wrap')?.appendChild(t);
+    setTimeout(() => t.remove(), 1500);
+
+    state.keys.delete(action);
+    return; // stop here; don't open NPC dialogue on same press
+  }
+
+  // 3) Otherwise talk to NPC if near
+  const npc = findNearbyNPC(playerEl, 10);
+  if (npc) {
+    const dlg = getDialogueFor(npc, { coins: state.coins, flags: state.flags });
+
+    // face the NPC
+    const pr = playerEl.getBoundingClientRect();
+    const npcEl = document.querySelector(`[aria-label="${npc.id}"]`);
+    const nr = npcEl?.getBoundingClientRect();
+    if (nr) {
+      const dx = (nr.left + nr.width/2) - (pr.left + pr.width/2);
+      const dy = (nr.top + nr.height/2) - (pr.top + pr.height/2);
+      if (Math.abs(dx) > Math.abs(dy)) {
+        state.dir = dx > 0 ? DIR.RIGHT : DIR.LEFT;
+      } else {
+        state.dir = dy > 0 ? DIR.DOWN : DIR.UP;
+      }
+    }
+
+    showDialogue(dlg.lines, () => {
+      if (dlg.action === 'OPEN_EAST_GATE' && !state.flags.homelessQuestDone) {
+        openEastGate();
+        state.flags.homelessQuestDone = true;
+      }
+    });
+
+    return;
+  }
+
+  // nothing to do
+  return;
 }
 
 
-        showDialogue(dlg.lines, () => {
-          if (dlg.action === 'OPEN_EAST_GATE' && !state.flags.homelessQuestDone) {
-            openEastGate();
-            state.flags.homelessQuestDone = true;
-          }
-        });
-      }
-    }
-  }
-  state.keys.delete(action);
+
+if (action === 'inventory') {
+  toggleInventory();
+  return;
+}
 });
 
 
@@ -388,7 +493,8 @@ if (isDialogueOpen()) {
   playerEl.classList.add('idle');
   playerEl.classList.toggle('flip-x', state.dir === DIR.LEFT);
   if (img) spriteImg.src = img.src;
-  return; // skip the rest of step()
+  return; // skip the rest of 
+  
 }
 
   // build direction vector from held keys
@@ -491,12 +597,23 @@ if (isDialogueOpen()) {
 
 // show/hide talk hint near closest NPC in range
 {
-  const npc = findNearbyNPC(playerEl, 10);
-  if (npc) {
+  // Prefer item hint if item is closer; otherwise NPC hint
+  const itemEl = findNearbyItem(playerEl, 14);
+  const npc = itemEl ? null : findNearbyNPC(playerEl, 10);
+
+  if (itemEl) {
+    const r = itemEl.getBoundingClientRect();
+    const gr = gameEl.getBoundingClientRect();
+    talkHint.textContent = 'E';
+    talkHint.style.left = (r.left - gr.left + r.width/2) + 'px';
+    talkHint.style.top  = (r.top  - gr.top) + 'px';
+    talkHint.style.display = 'block';
+  } else if (npc) {
     const el = document.querySelector(`[aria-label="${npc.id}"]`);
     if (el) {
       const r = el.getBoundingClientRect();
       const gr = gameEl.getBoundingClientRect();
+      talkHint.textContent = 'E';
       talkHint.style.left = (r.left - gr.left + r.width/2) + 'px';
       talkHint.style.top  = (r.top - gr.top) + 'px';
       talkHint.style.display = 'block';
@@ -506,7 +623,9 @@ if (isDialogueOpen()) {
   }
 }
 
+
 }
+
 
 
 // --- Loop ---
@@ -529,6 +648,55 @@ addEventListener('resize', () => {
 
 // --- Boot ---
 (async function boot() {
+  initUI();
+initInventoryUI({
+  onUse: (item) => {
+    // simple example effect
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = `Used ${item.name}`;
+    document.querySelector('.game-wrap')?.appendChild(t);
+    setTimeout(() => t.remove(), 1200);
+
+    // consume one
+    item.qty -= 1;
+    if (item.qty <= 0) state.inventory = state.inventory.filter(i => i !== item);
+    renderInventory(state.inventory);
+  },
+onDrop: (item) => {
+  const pr = playerEl.getBoundingClientRect();
+  const gr = gameEl.getBoundingClientRect();
+  const x = pr.left - gr.left + pr.width/2;
+  const y = pr.top  - gr.top  + pr.height; // base
+
+  const n = document.createElement('div');
+  n.className = 'item';
+  n.style.left = Math.round(x - 9) + 'px';
+  n.style.top  = Math.round(y - 18) + 'px';
+
+  // ✅ make it look like the in-world pickups
+  n.textContent = item.icon;
+  n.title = item.name;
+  n.style.background = 'none';
+  n.style.border = 'none';
+  n.style.boxShadow = 'none';
+
+  n.dataset.itemId = item.id;
+  n.dataset.itemName = item.name;
+  n.dataset.itemIcon = item.icon;
+
+  gameEl.appendChild(n);
+  state.itemNodes.add(n);
+
+  // decrease qty
+  item.qty -= 1;
+  if (item.qty <= 0) state.inventory = state.inventory.filter(i => i !== item);
+  renderInventory(state.inventory);
+}
+
+});
+renderInventory(state.inventory);
+
   await loadSprites({ playerEl, spriteImg });
   // position player initially
   playerEl.style.left = state.pos.x + 'px';

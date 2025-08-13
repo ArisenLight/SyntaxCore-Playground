@@ -11,17 +11,22 @@ export async function plantTreesAt(gameEl, placements) {
   const { url, w, h } = await cutTree(treeSrc, treeRect, scale);
 
   for (const { x, y } of placements) {
+    // Interpret {x,y} as the ground point (bottom center of the tree)
+    const baseY = Math.max(y, h + 2);                // keep fully on-screen if y is very small
+    const left  = Math.round(x - w / 2);             // bottom-center anchor
+    const top   = Math.round(baseY - h);
+
     const el = document.createElement('div');
     el.className = 'tree';
     el.style.position = 'absolute';
-    el.style.left = `${x}px`;
-    el.style.top = `${y}px`;
+    el.style.left = `${left}px`;
+    el.style.top = `${top}px`;
     el.style.width = `${w}px`;
     el.style.height = `${h}px`;
     el.style.background = `url('${url}') no-repeat 0 0 / ${w}px ${h}px`;
     el.style.imageRendering = 'pixelated';
     el.style.pointerEvents = 'none';
-    el.style.zIndex = String(100 + Math.floor(y));
+    el.style.zIndex = String(100 + Math.floor(baseY)); // depth by ground point
 
     // trunk collider (centered at base)
     const trunk = document.createElement('div');
@@ -37,6 +42,7 @@ export async function plantTreesAt(gameEl, placements) {
     gameEl.appendChild(el);
     colliders.push(trunk);
   }
+
 
   return colliders;
 }

@@ -193,3 +193,58 @@
   transform: translateX(10px) scaleY(0.98);
   opacity: 0;
 }
+
+/* world items */
+.item {
+  position: absolute;
+  width: 18px; height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; line-height: 18px;
+  user-select: none;
+  image-rendering: pixelated;
+  /* optional subtle glow so it pops on grass */
+  text-shadow: 0 1px 0 rgba(0,0,0,.5), 0 0 6px rgba(255,255,255,.35);
+  background: none;  /* remove the blue gradient */
+  border: none;      /* no border */
+  box-shadow: none;
+  pointer-events: none; /* they’re picked up via E, not clicked */
+}
+
+/* override any older .item styles */
+.game-wrap .item {
+  position: absolute;
+  width: 18px; height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; line-height: 18px;
+  user-select: none;
+  image-rendering: pixelated;
+  text-shadow: 0 1px 0 rgba(0,0,0,.5), 0 0 6px rgba(255,255,255,.35);
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  pointer-events: none;
+}
+
+
+
+/* inventory panel */
+#inventory {
+  position: fixed; right: 16px; top: 70px;
+  width: 260px; max-height: 60vh; overflow:auto;
+  background: rgba(17,24,39,.92);
+  border: 1px solid #283042; border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.4);
+  display: none; z-index: 10000;
+}
+#inventory h3 { margin: 0 0 8px; font-size: 15px; color: #a5b4fc; }
+.inv-row {
+  display:flex; align-items:center; justify-content:space-between;
+  gap:8px; padding:6px 8px; border-radius:8px; background:#0b1220; margin-bottom:6px;
+}
+.inv-row .name { font-size:14px; }
+.inv-row button {
+  padding:4px 8px; border:1px solid #2b3547; background:#111827; color:#e5e7eb;
+  border-radius:8px; cursor:pointer;
+}
+.inv-row button:hover { background:#0b1220; }

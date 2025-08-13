@@ -5,14 +5,7 @@ let idx = 0;
 let open = false;
 let onComplete = null;
 
-// --- Boot ---
-(async function boot() {
-  initUI(); // <-- ADD THIS
-  await loadSprites({ playerEl, spriteImg });
-  playerEl.style.left = state.pos.x + 'px';
-  playerEl.style.top  = state.pos.y + 'px';
-  requestAnimationFrame(loop);
-})();
+
 
 
 export function initUI() {
@@ -63,4 +56,49 @@ export function advanceDialogue() {
     return;
   }
   textEl.textContent = lines[idx];
+}
+
+// ADD at top-level in ui.js
+let invBox;
+let invOnUse = null;
+let invOnDrop = null;
+
+export function initInventoryUI({ onUse, onDrop } = {}) {
+  invOnUse = onUse || (()=>{});
+  invOnDrop = onDrop || (()=>{});
+
+  invBox = document.createElement('div');
+  invBox.id = 'inventory';
+  invBox.innerHTML = `<h3>Inventory <span style="opacity:.7;font-size:12px">(I to close)</span></h3><div id="invList"></div>`;
+  document.body.appendChild(invBox);
+}
+
+export function toggleInventory(show) {
+  if (!invBox) return;
+  const want = typeof show === 'boolean' ? show : invBox.style.display === 'none';
+  invBox.style.display = want ? 'block' : 'none';
+}
+
+export function renderInventory(items = []) {
+  const list = invBox?.querySelector('#invList');
+  if (!list) return;
+  list.innerHTML = '';
+  if (!items.length) {
+    list.innerHTML = `<div style="opacity:.8;font-size:13px">Empty. Pick items up with <b>E</b>.</div>`;
+    return;
+  }
+  for (const it of items) {
+    const row = document.createElement('div');
+    row.className = 'inv-row';
+    row.innerHTML = `
+      <div class="name">${it.icon ?? '🎒'} ${it.name} ${it.qty>1?`×${it.qty}`:''}</div>
+      <div>
+        <button data-act="use">Use</button>
+        <button data-act="drop">Drop</button>
+      </div>
+    `;
+    row.querySelector('[data-act="use"]').onclick = () => invOnUse(it);
+    row.querySelector('[data-act="drop"]').onclick = () => invOnDrop(it);
+    list.appendChild(row);
+  }
 }
