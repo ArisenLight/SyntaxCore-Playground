@@ -1,38 +1,163 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="styles.css" />
-  <title>RPG Game</title>
- 
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SyntaxCore • Projects</title>
+  <meta name="description" content="Playground projects by SyntaxCore. RPG demo, soundboard, utilities, experiments." />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0e0f12;
+      --panel: #151821;
+      --text: #e7e9ee;
+      --muted: #aab0bd;
+      --accent: #ff5a5f;
+      --accent-2: #4cc9f0;
+      --ring: rgba(255,90,95,.35);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; font-family: Inter, system-ui, -apple-system, Arial, sans-serif;
+      color: var(--text); background: radial-gradient(1200px 800px at 80% -10%, #1c2030 0%, #0e0f12 60%), var(--bg);
+    }
+    header {
+      max-width: 1100px; margin: 32px auto 16px; padding: 0 16px;
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: space-between;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logo {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 10px 30px rgba(255,90,95,.2);
+    }
+    h1 { font-size: 1.6rem; margin: 0; letter-spacing: .5px; }
+    .sub { color: var(--muted); font-size: .95rem; margin-top: 2px; }
+    .search {
+      display: flex; align-items: center; gap: 10px; width: 360px; max-width: 100%;
+      background: var(--panel); border: 1px solid #232635; border-radius: 12px; padding: 10px 12px;
+    }
+    .search input {
+      flex: 1; background: transparent; border: 0; outline: 0; color: var(--text); font-size: .95rem;
+    }
+    main { max-width: 1100px; margin: 10px auto 60px; padding: 0 16px; }
+    .grid {
+      display: grid; gap: 14px;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    }
+    .card {
+      background: linear-gradient(180deg, #1a1e2a 0%, #12141a 100%);
+      border: 1px solid #232635; border-radius: 16px; padding: 16px;
+      display: flex; flex-direction: column; gap: 10px;
+      transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    }
+    .card:focus-within, .card:hover { transform: translateY(-2px); border-color: #2f3650; box-shadow: 0 10px 30px rgba(76,201,240,.08); }
+    .card h3 { margin: 0; font-size: 1.05rem; }
+    .card p { margin: 0; color: var(--muted); font-size: .92rem; line-height: 1.35; }
+    .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .tag {
+      font-size: .75rem; color: #cfd5e6; background: #1b2030; border: 1px solid #2a2f45;
+      padding: 4px 8px; border-radius: 999px;
+    }
+    .actions { margin-top: auto; display: flex; gap: 10px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 10px 12px; border-radius: 12px; text-decoration: none; cursor: pointer;
+      border: 1px solid #2a2f45; color: #e7e9ee; background: #171a24;
+      transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+    }
+    .btn:hover { background: #1f2432; border-color: #384066; }
+    .btn.primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #0b0d14; border: 0;
+      box-shadow: 0 10px 24px var(--ring);
+    }
+    footer { max-width: 1100px; margin: 40px auto; padding: 0 16px; color: var(--muted); font-size: .9rem; }
+    .hidden { display: none !important; }
+    @media (max-width: 520px) { h1 { font-size: 1.3rem; } }
+  </style>
 </head>
 <body>
-  <div class="hud">
-    <div class="stats">
-      <div class="pill">Coins: <span id="coinCount">0</span></div>
-      <div class="pill">Speed: <span id="speed">180</span> px/s</div>
-    </div>
-    <div class="creator">Created by <a href="https://syntaxcorestudio.com">SyntaxCoreStudio</a></div>
-    <div class="pill">Move with <span class="kbd">WASD</span>/<span class="kbd">Arrows</span> · Hold <span class="kbd">Shift</span> to sprint</div>
-  </div>
 
-  <div class="game-wrap">
-    <div id="game">
-      <div id="player" class="player" aria-label="player" role="img">
-        <img id="sprite" alt="" />
+  <header>
+    <div class="brand">
+      <div class="logo" aria-hidden="true"></div>
+      <div>
+        <h1>SyntaxCore Playground</h1>
+        <div class="sub">Live demos, experiments, and works in progress</div>
       </div>
-
-<div id="eastGate" class="obstacle gate" style="right:14px; top:120px; width:22px; height:300px"></div>
-
-
-
-      <!-- Obstacles (you can move/resize or add more) -->
-
     </div>
-  </div>
 
-  <script type="module" src="js/main.js"></script>
+    <label class="search" aria-label="Search projects">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M21 21l-4.3-4.3M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" stroke="#8d94a8" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <input id="q" type="search" placeholder="Search projects by name or tag..." autocomplete="off" />
+    </label>
+  </header>
 
+  <main>
+    <section class="grid" id="grid" aria-label="Project list"></section>
+  </main>
+
+  <footer>
+    © <span id="year"></span> SyntaxCore. Some projects are prototypes.
+  </footer>
+
+  <script>
+    const PROJECTS = [
+      {
+        title: "RPG Demo",
+        desc: "Small RPG web app from your curriculum. Keyboard controls, UI, simple API usage.",
+        href: "/projects/rpg.html",   // update if it is rpg.html
+        repo: null,
+        tags: ["game", "js", "front-end"]
+      },
+      {
+        title: "Theatre Soundboard",
+        desc: "Simple browser soundboard. Add custom sounds on the fly for workshops or shows.",
+        href: "/projects/soundboard.html",
+        repo: null,
+        tags: ["theatre", "audio", "tool"]
+      }
+      // Add more projects here
+      // { title:"GalleryNest Demo", desc:"Client gallery prototype", href:"/projects/gallerynest/", repo:null, tags:["firebase","photos","saas"] }
+    ];
+
+    const grid = document.getElementById("grid");
+    const q = document.getElementById("q");
+    const year = document.getElementById("year"); year.textContent = new Date().getFullYear();
+
+    function render(items) {
+      grid.innerHTML = "";
+      items.forEach(p => {
+        const card = document.createElement("article");
+        card.className = "card";
+        card.innerHTML = `
+          <h3>${p.title}</h3>
+          <p>${p.desc}</p>
+          <div class="meta">${p.tags.map(t => `<span class="tag">${t}</span>`).join("")}</div>
+          <div class="actions">
+            <a class="btn primary" href="${p.href}">Open</a>
+            ${p.repo ? `<a class="btn" href="${p.repo}" target="_blank" rel="noopener">Code</a>` : ""}
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function filterProjects() {
+      const term = q.value.trim().toLowerCase();
+      const items = PROJECTS.filter(p =>
+        p.title.toLowerCase().includes(term) ||
+        p.desc.toLowerCase().includes(term) ||
+        p.tags.some(t => t.toLowerCase().includes(term))
+      );
+      render(items);
+    }
+
+    q.addEventListener("input", filterProjects);
+    render(PROJECTS);
+  </script>
 </body>
 </html>

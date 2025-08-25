@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <base href="/" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/styles.css" />
+  <title>RPG Game</title>
+ 
+</head>
+<body>
+  <div class="hud">
+    <div class="stats">
+      <div class="pill">Coins: <span id="coinCount">0</span></div>
+      <div class="pill">Speed: <span id="speed">180</span> px/s</div>
+    </div>
+    <div class="creator">Created by <a href="https://syntaxcorestudio.com">SyntaxCoreStudio</a></div>
+    <div class="pill">Move with <span class="kbd">WASD</span>/<span class="kbd">Arrows</span> · Hold <span class="kbd">Shift</span> to sprint</div>
+  </div>
+
+  <div class="game-wrap">
+    <div id="game">
+      <div id="player" class="player" aria-label="player" role="img">
+        <img id="sprite" alt="" />
+      </div>
+
+<div id="eastGate" class="obstacle gate" style="right:14px; top:120px; width:22px; height:300px"></div>
+
+
+
+      <!-- Obstacles (you can move/resize or add more) -->
+
+    </div>
+  </div>
+
+  <script type="module" src="/js/main.js"></script>
+
+</body>
+</html>

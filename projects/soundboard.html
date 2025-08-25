@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Soundboard • SyntaxCore</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#0e0f12; --panel:#151821; --text:#e7e9ee; --muted:#aab0bd; --accent:#ff5a5f; }
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,Arial;background:var(--bg);color:var(--text)}
+    header{max-width:1000px;margin:24px auto 12px;padding:0 16px;display:flex;justify-content:space-between;align-items:center}
+    a.home{color:#cfd5e6;text-decoration:none;border:1px solid #2a2f45;padding:8px 12px;border-radius:10px}
+    .wrap{max-width:1000px;margin:0 auto 60px;padding:0 16px}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 18px}
+    .btn{border:1px solid #2a2f45;background:#171a24;color:#e7e9ee;border-radius:12px;padding:10px 12px;cursor:pointer}
+    .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
+    .sound{padding:18px;border-radius:16px;border:1px solid #2a2f45;background:linear-gradient(180deg,#1a1e2a 0%,#12141a 100%)}
+    .name{font-weight:600;margin-bottom:8px}
+    .hint{color:var(--muted);font-size:.9rem}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🎵 Theatre Soundboard</h1>
+    <a class="home" href="/">Back to projects</a>
+  </header>
+
+  <div class="wrap">
+    <div class="toolbar">
+      <button id="add" class="btn">Add sound</button>
+      <button id="clear" class="btn">Clear all</button>
+      <span class="hint">Tip: add mp3 or wav files. Click to play.</span>
+    </div>
+
+    <div id="board" class="grid" aria-label="Sound buttons"></div>
+  </div>
+
+  <script>
+    const board = document.getElementById("board");
+    const addBtn = document.getElementById("add");
+    const clearBtn = document.getElementById("clear");
+
+    // optional basic persistence with localStorage
+    const KEY = "sc-soundboard";
+    const state = JSON.parse(localStorage.getItem(KEY) || "[]");
+
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = "audio/*";
+    fileInput.multiple = true;
+
+    fileInput.onchange = async (e) => {
+      const files = Array.from(e.target.files || []);
+      for (const f of files) {
+        const url = URL.createObjectURL(f);
+        state.push({ name: f.name.replace(/\.[^/.]+$/, ""), url });
+      }
+      localStorage.setItem(KEY, JSON.stringify(state));
+      render();
+      fileInput.value = "";
+    };
+
+    function playSound(url) {
+      const a = new Audio(url);
+      a.currentTime = 0;
+      a.play();
+    }
+
+    function render() {
+      board.innerHTML = "";
+      if (state.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "hint";
+        empty.textContent = "No sounds yet. Click Add sound to load your first file.";
+        board.appendChild(empty);
+        return;
+      }
+      state.forEach((item, i) => {
+        const card = document.createElement("button");
+        card.className = "sound";
+        card.innerHTML = `<div class="name">${item.name}</div><div class="hint">Click to play</div>`;
+        card.onclick = () => playSound(item.url);
+        board.appendChild(card);
+      });
+    }
+
+    addBtn.onclick = () => fileInput.click();
+    clearBtn.onclick = () => {
+      if (confirm("Remove all loaded sounds")) {
+        state.splice(0, state.length);
+        localStorage.removeItem(KEY);
+        render();
+      }
+    };
+
+    render();
+  </script>
+</body>
+</html>
