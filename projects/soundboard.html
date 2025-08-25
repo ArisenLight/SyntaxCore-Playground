@@ -1,99 +1,248 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Soundboard • SyntaxCore</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Soundboard</title>
   <style>
-    :root { --bg:#0e0f12; --panel:#151821; --text:#e7e9ee; --muted:#aab0bd; --accent:#ff5a5f; }
-    *{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,Arial;background:var(--bg);color:var(--text)}
-    header{max-width:1000px;margin:24px auto 12px;padding:0 16px;display:flex;justify-content:space-between;align-items:center}
-    a.home{color:#cfd5e6;text-decoration:none;border:1px solid #2a2f45;padding:8px 12px;border-radius:10px}
-    .wrap{max-width:1000px;margin:0 auto 60px;padding:0 16px}
-    .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 18px}
-    .btn{border:1px solid #2a2f45;background:#171a24;color:#e7e9ee;border-radius:12px;padding:10px 12px;cursor:pointer}
-    .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
-    .sound{padding:18px;border-radius:16px;border:1px solid #2a2f45;background:linear-gradient(180deg,#1a1e2a 0%,#12141a 100%)}
-    .name{font-weight:600;margin-bottom:8px}
-    .hint{color:var(--muted);font-size:.9rem}
+    body { font-family: Arial, sans-serif; background:#222; color:#fff; text-align:center; padding:20px; }
+    h1 { margin-bottom: 20px; }
+
+    #controls { margin-bottom: 20px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+    .ctrl-btn, .sound-btn {
+      padding: 12px 16px; border: none; border-radius: 10px; background: #444; color: #fff;
+      cursor: pointer; font-size: 16px; transition: background 0.2s; user-select: none;
+    }
+    .ctrl-btn:hover, .sound-btn:hover { background:#666; }
+    .ctrl-btn.primary { background:#3a6ee8; }
+    .ctrl-btn.primary:hover { background:#5c86ee; }
+    .ctrl-btn.danger { background:#b63a3a; }
+    .ctrl-btn.danger:hover { background:#d24a4a; }
+    .ctrl-btn.toggle.active { outline: 2px solid #7bd88f; }
+
+    #soundboard { display:flex; flex-wrap:wrap; gap:12px; justify-content:center; }
+
+    .sound-card {
+      position: relative;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:6px;
+      background:#2b2b2b;
+      border-radius:12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+
+    .sound-btn {
+      min-width: 160px;
+      display:flex; align-items:center; gap:8px; justify-content:center;
+    }
+    .sound-btn.playing { outline:2px solid #7bd88f; }
+
+    /* Selection checkbox */
+    .select-box {
+      position:absolute;
+      top:6px;
+      left:6px;
+      width:20px;
+      height:20px;
+      transform: scale(1.2);
+      display:none;
+      cursor:pointer;
+    }
+    .select-mode .select-box { display:block; }
+
+    /* Small filename text styling inside button */
+    .label { opacity:0.9; }
+
+    /* Optional per card delete button if you want single removal without select mode */
+    .trash-btn {
+      width:42px;
+      height:42px;
+      border-radius:10px;
+      border:none;
+      background:#444;
+      color:#fff;
+      cursor:pointer;
+    }
+    .trash-btn:hover { background:#666; }
+    /* Hide this if you do not want single delete outside select mode */
+    .trash-btn { display:none; }
+    .select-mode .trash-btn { display:none; } /* keep hidden in select mode too */
   </style>
 </head>
 <body>
-  <header>
-    <h1>🎵 Theatre Soundboard</h1>
-    <a class="home" href="/">Back to projects</a>
-  </header>
 
-  <div class="wrap">
-    <div class="toolbar">
-      <button id="add" class="btn">Add sound</button>
-      <button id="clear" class="btn">Clear all</button>
-      <span class="hint">Tip: add mp3 or wav files. Click to play.</span>
-    </div>
+  <h1>🎵 Theatre Soundboard</h1>
 
-    <div id="board" class="grid" aria-label="Sound buttons"></div>
+  <div id="controls">
+    <button id="addSoundBtn" class="ctrl-btn primary">➕ Add Sound</button>
+    <button id="selectToggleBtn" class="ctrl-btn toggle">Select</button>
+    <button id="removeSelectedBtn" class="ctrl-btn danger">Remove Selected</button>
+    <button id="clearAllBtn" class="ctrl-btn danger">Remove All</button>
   </div>
 
+  <div id="soundboard"></div>
+
   <script>
-    const board = document.getElementById("board");
-    const addBtn = document.getElementById("add");
-    const clearBtn = document.getElementById("clear");
+    const soundboard = document.getElementById("soundboard");
+    const addSoundBtn = document.getElementById("addSoundBtn");
+    const selectToggleBtn = document.getElementById("selectToggleBtn");
+    const removeSelectedBtn = document.getElementById("removeSelectedBtn");
+    const clearAllBtn = document.getElementById("clearAllBtn");
 
-    // optional basic persistence with localStorage
-    const KEY = "sc-soundboard";
-    const state = JSON.parse(localStorage.getItem(KEY) || "[]");
-
+    // Hidden file input
     const fileInput = document.createElement("input");
     fileInput.type = "file";
     fileInput.accept = "audio/*";
-    fileInput.multiple = true;
 
-    fileInput.onchange = async (e) => {
-      const files = Array.from(e.target.files || []);
-      for (const f of files) {
-        const url = URL.createObjectURL(f);
-        state.push({ name: f.name.replace(/\.[^/.]+$/, ""), url });
+    // Toggle select mode
+    let selectMode = false;
+    function setSelectMode(on) {
+      selectMode = on;
+      document.body.classList.toggle("select-mode", on);
+      selectToggleBtn.classList.toggle("active", on);
+      selectToggleBtn.textContent = on ? "Exit Select" : "Select";
+      // Clear any checked boxes when leaving select mode
+      if (!on) {
+        soundboard.querySelectorAll('.select-box:checked').forEach(cb => cb.checked = false);
       }
-      localStorage.setItem(KEY, JSON.stringify(state));
-      render();
+    }
+
+    // Button label helper
+    function setBtnState(btn, state) {
+      const base = btn.dataset.baseLabel;
+      if (state === "playing") {
+        btn.innerHTML = `⏸️ <span class="label">${base}</span>`;
+        btn.classList.add("playing");
+      } else {
+        btn.innerHTML = `▶️ <span class="label">${base}</span>`;
+        btn.classList.remove("playing");
+      }
+    }
+
+    function createSoundCard(file) {
+      const url = URL.createObjectURL(file);
+      const audio = new Audio(url);
+      audio.preload = "auto";
+
+      const card = document.createElement("div");
+      card.className = "sound-card";
+
+      // Selection checkbox
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.className = "select-box";
+
+      // Main play button
+      const btn = document.createElement("button");
+      btn.className = "sound-btn";
+      const label = file.name.replace(/\.[^/.]+$/, "");
+      btn.dataset.baseLabel = label;
+      setBtnState(btn, "paused");
+
+      // Optional single delete button, currently hidden by CSS
+      const trash = document.createElement("button");
+      trash.className = "trash-btn";
+      trash.title = "Remove this sound";
+      trash.textContent = "🗑️";
+
+      // Play and pause toggle
+      function togglePlayPause() {
+        if (audio.paused) {
+          audio.play().then(() => setBtnState(btn, "playing")).catch(() => {});
+        } else {
+          audio.pause();
+          setBtnState(btn, "paused");
+        }
+      }
+
+      // Long press to restart from start and play
+      let pressTimer = null;
+      let longPressTriggered = false;
+      const LONG_PRESS_MS = 600;
+
+      btn.addEventListener("pointerdown", () => {
+        longPressTriggered = false;
+        pressTimer = setTimeout(() => {
+          longPressTriggered = true;
+          audio.currentTime = 0;
+          audio.play().then(() => setBtnState(btn, "playing")).catch(() => {});
+        }, LONG_PRESS_MS);
+      });
+
+      btn.addEventListener("pointerup", () => {
+        clearTimeout(pressTimer);
+        if (!longPressTriggered) togglePlayPause();
+      });
+
+      btn.addEventListener("pointerleave", () => clearTimeout(pressTimer));
+
+      audio.addEventListener("ended", () => setBtnState(btn, "paused"));
+
+      // Keyboard support
+      btn.addEventListener("keydown", (e) => {
+        if (e.code === "Space" || e.key === " ") {
+          e.preventDefault();
+          togglePlayPause();
+        }
+      });
+
+      // Remove one card if you ever show the trash button
+      trash.addEventListener("click", () => removeCard(card));
+
+      // Store refs for cleanup
+      card._audio = audio;
+      card._url = url;
+
+      card.appendChild(cb);
+      card.appendChild(btn);
+      card.appendChild(trash);
+      soundboard.appendChild(card);
+    }
+
+    // Cleanup helper
+    function cleanupCard(card) {
+      try {
+        const audio = card._audio;
+        if (audio) {
+          audio.pause();
+          audio.src = "";
+        }
+        if (card._url) URL.revokeObjectURL(card._url);
+      } catch {}
+    }
+
+    function removeCard(card) {
+      cleanupCard(card);
+      card.remove();
+    }
+
+    function removeSelected() {
+      const selectedCards = Array.from(soundboard.querySelectorAll(".sound-card"))
+        .filter(card => card.querySelector(".select-box")?.checked);
+      selectedCards.forEach(removeCard);
+    }
+
+    function clearAll() {
+      Array.from(soundboard.children).forEach(removeCard);
+      soundboard.innerHTML = "";
+    }
+
+    // Wire top controls
+    addSoundBtn.onclick = () => fileInput.click();
+    selectToggleBtn.onclick = () => setSelectMode(!selectMode);
+    removeSelectedBtn.onclick = removeSelected;
+    clearAllBtn.onclick = clearAll;
+
+    // Add sound when user picks a file
+    fileInput.onchange = (e) => {
+      const file = e.target.files[0];
+      if (file) createSoundCard(file);
+      // allow picking the same file again later
       fileInput.value = "";
     };
-
-    function playSound(url) {
-      const a = new Audio(url);
-      a.currentTime = 0;
-      a.play();
-    }
-
-    function render() {
-      board.innerHTML = "";
-      if (state.length === 0) {
-        const empty = document.createElement("div");
-        empty.className = "hint";
-        empty.textContent = "No sounds yet. Click Add sound to load your first file.";
-        board.appendChild(empty);
-        return;
-      }
-      state.forEach((item, i) => {
-        const card = document.createElement("button");
-        card.className = "sound";
-        card.innerHTML = `<div class="name">${item.name}</div><div class="hint">Click to play</div>`;
-        card.onclick = () => playSound(item.url);
-        board.appendChild(card);
-      });
-    }
-
-    addBtn.onclick = () => fileInput.click();
-    clearBtn.onclick = () => {
-      if (confirm("Remove all loaded sounds")) {
-        state.splice(0, state.length);
-        localStorage.removeItem(KEY);
-        render();
-      }
-    };
-
-    render();
   </script>
+
 </body>
 </html>
